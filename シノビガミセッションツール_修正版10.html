@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シノビガミセッションツール</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#F6F3EC;--grid:#DED6C4;--ink:#20262B;--ink-soft:#5C6570;--indigo:#2B3A67;--indigo-deep:#1B2747;--gold:#C99A2E;--pip:#20262B;--face:#FFFDF8;--result:#B5482E;--pink:#F2A7C4;--mahi:#F1D75A;--damage:#C86A5A;}
+*{box-sizing:border-box} html,body{margin:0;min-height:100%;background:var(--paper);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:28px 28px;color:var(--ink);font-family:'Zen Kaku Gothic New',sans-serif}
+.app{min-height:100vh;display:flex}.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:rgba(27,39,71,.97);padding:28px 18px;z-index:10;box-shadow:4px 0 18px rgba(27,39,71,.15);display:flex;flex-direction:column}.sidebar-note{margin-top:auto;padding:18px 6px 4px;color:rgba(255,255,255,.48);font-size:10px;line-height:1.7;text-align:left}
+.brand{font-family:'Zen Old Mincho',serif;color:#FFFDF8;font-size:21px;font-weight:700;line-height:1.45;margin:0 10px 30px}.brand small{display:block;font-family:'Zen Kaku Gothic New',sans-serif;font-size:11px;font-weight:400;opacity:.7;margin-top:4px}
+.nav-btn{width:100%;border:1px solid rgba(255,255,255,.25);background:transparent;color:#FFFDF8;text-align:left;border-radius:10px;padding:13px 14px;margin-bottom:10px;font:500 14px 'Zen Kaku Gothic New';cursor:pointer;transition:.15s}.nav-btn:hover{background:rgba(255,255,255,.08)}.nav-btn.active{background:var(--gold);border-color:var(--gold);color:var(--indigo-deep);font-weight:700}
+.main{width:100%;margin-left:220px}.page{display:none;min-height:100vh;padding:44px 28px 64px}.page.active{display:block}.wrap{max-width:980px;margin:0 auto}header{text-align:center;margin-bottom:36px}h1{font-family:'Zen Old Mincho',serif;font-weight:700;font-size:clamp(28px,6vw,38px);margin:0 0 8px;color:var(--indigo-deep);letter-spacing:.02em}.sub{color:var(--ink-soft);font-size:14px;margin:0}
+.panel{background:var(--face);border:1px solid var(--grid);border-radius:14px;padding:28px 24px;box-shadow:0 4px 14px rgba(32,38,43,.05)}
+/* dice calculator */
+.dice-row{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin:32px 0 40px;min-height:64px}.die{width:56px;height:56px;background:var(--face);border:2px solid var(--indigo-deep);border-radius:10px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:8px;box-shadow:3px 3px 0 rgba(27,39,71,.15);transition:transform .4s cubic-bezier(.34,1.56,.64,1)}.die.rolling{animation:tumble .5s ease}.die.selected{border-color:var(--gold);box-shadow:3px 3px 0 rgba(27,39,71,.15),0 0 0 3px rgba(201,154,46,.4)}.die.selected .pip.on{background:var(--gold)}.pip{width:8px;height:8px;border-radius:50%;background:transparent;justify-self:center;align-self:center}.pip.on{background:var(--pip)}@keyframes tumble{0%{transform:rotate(0) scale(1)}50%{transform:rotate(180deg) scale(1.08)}100%{transform:rotate(360deg) scale(1)}}
+.controls{display:grid;grid-template-columns:repeat(3,minmax(0,220px));justify-content:center;gap:16px}.field{display:grid;gap:7px}.field label{font-size:12px;font-weight:700;color:var(--ink-soft)}select{width:100%;max-width:220px;padding:11px 12px;border:1px solid var(--grid);border-radius:8px;background:#FFFDF8;color:var(--ink);font:500 14px 'Zen Kaku Gothic New'}
+.sentence{text-align:center;color:var(--ink-soft);margin:22px 0;font-size:14px}.roll{width:100%;border:0;border-radius:999px;background:var(--indigo-deep);color:#FFFDF8;padding:13px 18px;font:700 14px 'Zen Kaku Gothic New';cursor:pointer}.roll:hover{filter:brightness(1.1)}.result{text-align:center;margin-top:26px}.pct{font:700 42px 'JetBrains Mono',monospace;color:var(--result)}.frac{font:500 13px 'JetBrains Mono',monospace;color:var(--ink-soft);min-height:20px;margin-top:4px}.bars{height:100px;display:flex;align-items:flex-end;gap:5px;margin-top:28px}.bar{flex:1;min-width:8px;background:var(--grid);border-radius:4px 4px 0 0;position:relative}.bar.hit{background:var(--indigo)}.bar-labels{display:flex;gap:5px}.bar-labels div{flex:1;text-align:center;font:11px 'JetBrains Mono',monospace;color:var(--ink-soft)}
+/* skill sheet */
+.skill-toolbar{display:grid;grid-template-columns:96px 96px 220px 220px;justify-content:center;align-items:center;gap:10px;margin-bottom:18px}.skill-btn{font:700 15px 'Zen Kaku Gothic New';padding:11px 14px;border-radius:8px;border:2px solid var(--indigo-deep);background:var(--face);color:var(--indigo-deep);cursor:pointer;height:50px}.skill-btn.active{background:var(--indigo-deep);color:#FFFDF8}.hante-value{font-size:15px;font-weight:700;color:var(--indigo-deep);background:var(--face);border:1px solid var(--grid);padding:11px 12px;border-radius:8px;height:50px;display:flex;align-items:center;justify-content:center;white-space:nowrap}.hante-prob{font:700 15px 'JetBrains Mono',monospace;color:var(--result);background:var(--face);border:1px solid var(--grid);padding:11px 12px;border-radius:8px;height:50px;display:flex;align-items:center;justify-content:center;white-space:nowrap}
+.search-area{max-width:720px;margin:0 auto 16px;position:relative}.search-box{display:flex;gap:8px}.search-box input{flex:1;min-width:0;padding:11px 13px;border:1px solid var(--grid);border-radius:9px;background:var(--face);color:var(--ink);font:500 14px 'Zen Kaku Gothic New';outline:none}.search-box input:focus{border-color:var(--indigo)}.clear-search{border:1px solid var(--grid);background:var(--face);border-radius:9px;padding:0 14px;color:var(--ink-soft);cursor:pointer}.suggestions{position:absolute;left:0;right:58px;top:48px;background:var(--face);border:1px solid var(--grid);border-radius:9px;box-shadow:0 8px 20px rgba(32,38,43,.12);overflow:hidden;z-index:5}.suggestion{display:flex;justify-content:space-between;gap:12px;padding:9px 12px;cursor:pointer}.suggestion:hover{background:#F0ECE3}.suggestion small{color:var(--ink-soft)}
+.skill-scroll{overflow:auto}.skill-table{border-collapse:collapse;background:#FFFDF8;margin:0 auto;user-select:none;width:min(100%,1020px);min-width:800px;box-shadow:0 3px 10px rgba(32,38,43,.06)}.skill-table th,.skill-table td{border:1px solid var(--ink);text-align:center;font-size:16px;padding:0}.cat-header{background:var(--ink);color:#FFFDF8;font-weight:700;padding:9px 11px;min-width:88px;cursor:pointer}.cat-header.damaged{background:var(--ink);box-shadow:inset 0 0 0 999px rgba(200,106,90,.28)}.letter-row{display:none}.gap-header{background:var(--ink);width:24px;padding:3px 2px;cursor:pointer;vertical-align:middle}.gap-letter{display:block;color:var(--gold);font-size:11px;line-height:1;margin-top:3px}.gap-checkbox{width:12px;height:12px;margin:0 auto;background:#FFFDF8;border:1px solid #FFFDF8}.gap-checkbox.on{background:var(--ink);border:1px solid #FFFDF8}.gap-cell{width:24px;cursor:pointer;background:#FFFDF8;transition:background .1s}.gap-cell.on{background:var(--ink)}
+.skill-cell{padding:9px 11px;cursor:pointer;white-space:nowrap;color:var(--ink);background:#FFFDF8;transition:background .1s,color .1s;position:relative}.skill-cell.on{background:var(--ink);color:#FFFDF8}.skill-cell.paralyzed{background:var(--mahi);color:var(--ink)}.skill-cell.damaged{background:rgba(200,106,90,.38);color:var(--ink)}
+/* learned skills keep a black thick frame, with status color inside */
+.skill-cell.on.paralyzed{background:var(--mahi);color:var(--ink);box-shadow:inset 0 0 0 4px var(--ink)}.skill-cell.on.damaged{background:var(--damage);color:#FFFDF8;box-shadow:inset 0 0 0 4px var(--ink)}
+.skill-cell.search-match{background:inherit!important;color:inherit!important;outline:4px solid var(--pink)!important;outline-offset:-4px;z-index:3}.num-cell{background:var(--ink);color:#FFFDF8;font-weight:700;padding:9px 11px;font-size:16px}.skill-cell.hante-start{outline:4px solid #4A7DFF;outline-offset:-4px;z-index:2}.skill-cell.hante-target{outline:4px solid #35A853;outline-offset:-4px;z-index:2}
+.help{margin-top:14px;text-align:center;color:var(--ink-soft);font-size:12px}.danger-note{font-size:11px;color:var(--ink-soft);text-align:center;margin-top:8px}
+@media(max-width:760px){.controls{grid-template-columns:1fr}.skill-toolbar{grid-template-columns:96px 96px;justify-content:center}.hante-value,.hante-prob{grid-column:auto}.wrap{max-width:760px}.sidebar{width:170px}.main{margin-left:170px}.page{padding:30px 14px 48px}.brand{font-size:17px;margin-left:4px}.nav-btn{font-size:12px;padding:11px 10px}.skill-table{min-width:850px}}
+@media(max-width:560px){.app{display:block}.sidebar{position:sticky;width:100%;height:auto;padding:12px;display:flex;align-items:center;gap:8px}.brand{display:none}.nav-btn{width:auto;flex:1;margin:0;text-align:center}.main{margin-left:0}.page{padding-top:28px}}
+
+.release-info{
+  display:inline-block;
+  margin-top:4px;
+  font-size:10px;
+  line-height:1.5;
+  opacity:.65;
+}
+
+/* responsive */
+html,body{overflow-x:hidden}.main-content{min-width:0}
+@media(max-width:1100px){.sidebar{width:190px;min-width:190px}.skill-wrap{transform:scale(.94);transform-origin:top center;margin-bottom:-3%}}
+@media(max-width:850px){.app{flex-direction:column}.sidebar{width:100%;min-width:0;height:auto;position:relative;padding:12px 16px;flex-direction:row;align-items:center;gap:8px}.sidebar-nav{display:flex;flex-direction:row;gap:8px}.sidebar-note{display:none}.main-content{width:100%;padding:18px 12px}.skill-wrap{transform:none;margin-bottom:0;overflow-x:auto}}
+@media(max-height:760px) and (min-width:851px){.sidebar{padding-top:16px;padding-bottom:16px}.main-content{padding-top:18px;padding-bottom:18px}}
+.modifier-box{display:inline-flex;align-items:center;height:42px;border:2px solid var(--grid);border-radius:10px;background:var(--face);overflow:hidden;vertical-align:middle;margin-left:8px}.modifier-label{padding:0 10px;font-size:13px;font-weight:700;color:var(--ink-soft)}.modifier-btn{width:34px;height:100%;border:0;border-left:1px solid var(--grid);border-right:1px solid var(--grid);background:transparent;color:var(--indigo-deep);font-size:20px;line-height:1;cursor:pointer}.modifier-btn:hover{background:#eee9dc}.modifier-value{min-width:42px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--ink)}
+
+/* 判定ツールバー：画面幅に応じて折り返す */
+.skill-toolbar{
+  display:flex !important;
+  flex-wrap:wrap;
+  justify-content:center;
+  align-items:center;
+  gap:10px;
+  width:100%;
+}
+.skill-toolbar .skill-btn{flex:0 0 96px}
+.skill-toolbar .hante-value,
+.skill-toolbar .hante-prob{flex:0 1 220px;min-width:150px}
+.skill-toolbar .modifier-box{flex:0 0 auto}
+@media(max-width:1000px) and (min-width:561px){
+  .sidebar{width:170px !important;min-width:170px !important;}
+  .main{margin-left:170px !important;}
+  .page{padding-left:14px;padding-right:14px;}
+  .skill-toolbar .hante-value,
+  .skill-toolbar .hante-prob{flex-basis:190px;min-width:145px;}
+}
+@media(max-width:700px) and (min-width:561px){
+  .skill-toolbar{gap:7px;}
+  .skill-toolbar .skill-btn{flex-basis:88px;}
+  .skill-toolbar .hante-value,
+  .skill-toolbar .hante-prob{flex-basis:175px;min-width:135px;font-size:13px;}
+  .modifier-box{height:42px;}
+}
+@media(max-width:560px){
+  .skill-toolbar .hante-value,
+  .skill-toolbar .hante-prob{flex-basis:100%;min-width:0;}
+  .skill-toolbar .modifier-box{margin-left:0;}
+}
+
+
+.hante-value{font-weight:700}
+.hante-prob.prob-green{color:#238636;font-weight:700}
+.hante-prob.prob-red{color:#d1242f;font-weight:700}
+.hante-prob.prob-purple{color:#7a3e9d;font-weight:700}
+
+
+/* ===== 修正版7: 特技ページの配置 ===== */
+.skill-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  flex-wrap:wrap;
+  margin:0 auto 16px;
+  max-width:1100px;
+}
+.skill-toolbar > *{flex:0 0 auto}
+.skill-toolbar .skill-btn{
+  min-width:64px;
+  height:42px;
+  padding:0 13px;
+}
+.skill-toolbar .hante-value,
+.skill-toolbar .hante-prob{
+  height:42px;
+  padding:0 12px;
+}
+.skill-toolbar .hante-value{min-width:118px}
+.skill-toolbar .hante-prob{min-width:145px}
+.modifier-box{
+  height:42px;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:3px 5px 3px 10px;
+  background:var(--face);
+  border:1px solid var(--grid);
+  border-radius:8px;
+  white-space:nowrap;
+}
+.modifier-label{font-weight:700;color:var(--ink-soft);margin-right:2px}
+.modifier-value{min-width:27px;text-align:center;font:700 15px 'JetBrains Mono',monospace;color:var(--indigo-deep)}
+.modifier-btn{
+  width:30px;height:32px;border:1px solid var(--grid);border-radius:6px;
+  background:#fff;cursor:pointer;color:var(--indigo-deep);font-weight:700;
+}
+.modifier-btn:hover{background:#eef1f7}
+.history-area{max-width:1020px;margin:14px auto 16px}
+.history-title{font-weight:700;color:var(--ink);margin-bottom:7px}
+#judgmentHistory{display:flex;flex-wrap:wrap;gap:6px;min-height:34px}
+.history-item{
+  border:1px solid var(--indigo);background:#fff;border-radius:6px;
+  padding:6px 10px;cursor:pointer;font:500 13px 'Zen Kaku Gothic New';color:var(--ink);
+}
+.history-item:hover{background:#eef1f7}
+.history-empty{color:var(--ink-soft);font-size:13px;padding:6px 0}
+.search-area{max-width:720px;margin:0 auto 16px;position:relative}
+.search-box{display:flex;gap:8px}
+.search-box input{flex:1;min-width:0}
+.clear-search{min-height:42px}
+.skill-name{display:inline-block;white-space:nowrap;text-align:center}
+.skill-name.n2{letter-spacing:.34em}
+.skill-name.n3{letter-spacing:.17em}
+.skill-name.n4{letter-spacing:.08em}
+.skill-name.n5{letter-spacing:.02em}
+.skill-name.n6{letter-spacing:0}
+.skill-cell.search-match{box-shadow:inset 0 0 0 3px #e85aad}
+.skill-cell.hante-start{box-shadow:inset 0 0 0 4px #1683ff}
+.skill-cell.hante-target{box-shadow:inset 0 0 0 4px #2da44e}
+.hante-value{font-weight:800}
+.hante-prob.prob-green{color:#238636;font-weight:800}
+.hante-prob.prob-red{color:#d1242f;font-weight:800}
+.hante-prob.prob-purple{color:#7a3e9d;font-weight:800}
+.lock-button{
+  width:42px;height:42px;border:2px solid #2B3A67;background:#fff;border-radius:6px;
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:5px;
+  transition:background .2s,border-color .2s,transform .1s;
+}
+.lock-button:active{transform:scale(.96)}
+.lock-button.locked{background:#d1242f;border-color:#d1242f}
+.lock-icon{width:24px;height:24px;display:block}
+.lock-body{fill:#2B3A67}
+.lock-shackle{
+  fill:none;stroke:#2B3A67;stroke-width:3;stroke-linecap:round;
+  transform-box:fill-box;transform-origin:center;transition:transform .25s ease;
+}
+.lock-keyhole{fill:#fff}
+.lock-button.locked .lock-body{fill:#fff}
+.lock-button.locked .lock-shackle{stroke:#fff}
+.lock-button:not(.locked) .lock-shackle{transform:rotate(-24deg) translate(-1px,-1px)}
+.lock-button.lock-anim .lock-shackle{animation:lockClick .32s ease}
+@keyframes lockClick{
+  0%{transform:rotate(-24deg) translate(-1px,-1px)}
+  55%{transform:rotate(8deg)}
+  100%{transform:rotate(0deg)}
+}
+@media(max-width:900px){
+  .skill-toolbar{justify-content:flex-start}
+}
+@media(max-width:700px){
+  .skill-toolbar .hante-value{min-width:108px}
+  .skill-toolbar .hante-prob{min-width:128px}
+}
+@media(max-width:560px){
+  .skill-toolbar{justify-content:flex-start}
+  .skill-toolbar .hante-value,.skill-toolbar .hante-prob{flex:1 1 145px;min-width:0}
+  .skill-toolbar .modifier-box{flex:0 0 auto}
+}
+
+
+.achievement-number{
+  font-size:1.55em;
+  font-weight:900;
+  line-height:1;
+}
+.achievement-number.achievement-green{color:#238636}
+.achievement-number.achievement-red{color:#d1242f}
+.achievement-number.achievement-purple{color:#7a3e9d}
+
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar"><div class="brand">シノビガミ<br>セッションツール<small>SESSION TOOL</small></div><button class="nav-btn active" data-page="skills">特技表</button><button class="nav-btn" data-page="probability">確率計算機</button><div class="sidebar-note">このサイトのURLは一般公開しておりません。<br>編集、公開などを行うことを禁止いたします。<br><br>バグ、改善案の発見がございましたら<br>管理者の個人チャットまでお願いします。<br><br>管理・設計：亜留蜜柑<br>
+<span class="release-info">最終更新日：2026年09月16日<br>プレリリース</span></div></aside>
+<main class="main">
+<section id="page-skills" class="page active"><div class="wrap">
+<header><h1>特技表</h1><p class="sub">クリックで習得・ギャップ・マヒ・ダメージを管理</p></header>
+
+<div class="skill-toolbar">
+  <button type="button" id="lockModeButton" class="lock-button" aria-label="ロックモード" title="ロックモード" aria-pressed="false">
+    <svg class="lock-icon" viewBox="0 0 32 32" aria-hidden="true">
+      <path class="lock-body" d="M7 13h18a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V16a3 3 0 0 1 3-3z"/>
+      <path class="lock-shackle" d="M9 13V9a7 7 0 0 1 14 0v4"/>
+      <circle class="lock-keyhole" cx="16" cy="19" r="2"/>
+      <path class="lock-keyhole" d="M15 20h2l1 5h-4z"/>
+    </svg>
+  </button>
+  <button type="button" id="hanteBtn" class="skill-btn">判定</button>
+  <span id="hanteValue" class="hante-value">達成値: --</span>
+  <span id="hanteProbability" class="hante-prob">成功率: --</span>
+  <span class="modifier-box">
+    <span class="modifier-label">修正</span>
+    <button type="button" id="modifierPlus" class="modifier-btn" aria-label="修正を1増やす">▲</button>
+    <span id="modifierValue" class="modifier-value">0</span>
+    <button type="button" id="modifierMinus" class="modifier-btn" aria-label="修正を1減らす">▼</button>
+  </span>
+  <button type="button" id="mahiBtn" class="skill-btn">マヒ</button>
+</div>
+
+<div class="skill-scroll"><table id="skillTable" class="skill-table"></table></div>
+<div class="help">通常時は特技の習得・解除、ギャップの変更ができます。「マヒ」では習得済み特技の麻痺を切り替え、「判定」では判定する特技を選択します。特技分野名クリックでダメージを切り替えます。</div>
+
+<div class="history-area">
+  <div class="history-title">最近の判定</div>
+  <div id="judgmentHistory" aria-label="最近の判定履歴"></div>
+</div>
+
+<div class="search-area">
+  <div class="search-box">
+    <input id="skillSearch" type="text" placeholder="特技名を検索（例：分身・ぶんしん）"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <button type="button" class="clear-search" id="clearSearch">クリア</button>
+  </div>
+  <div id="suggestions" class="suggestions" hidden></div>
+</div>
+</div></section>
+<section id="page-probability" class="page"><div class="wrap">
+<header><h1>ダイスの確率計算機</h1><p class="sub">ダイスの出目から、条件を満たす確率を計算します</p></header>
+<div class="dice-row" id="diceRow"></div>
+<div class="panel"><div class="controls"><div class="field"><label for="numDice">ダイスの個数</label><select id="numDice"></select></div><div class="field"><label for="cmp">条件</label><select id="cmp"><option value="gte">合計が目標値以上</option><option value="lte">合計が目標値以下</option></select></div><div class="field"><label for="target">目標値</label><select id="target"></select></div></div><p class="sentence" id="sentence"></p><button class="roll" id="rollBtn">計算してダイスを振る</button><div class="result"><div class="pct" id="pctOut">—</div><div class="frac" id="fracOut">&nbsp;</div></div><div class="bars" id="bars"></div><div class="bar-labels" id="barLabels"></div></div>
+</div></section>
+</main></div>
+<script>
+let lockMode=false;
+function updateLockButton(){
+  const b=document.getElementById('lockModeButton');
+  if(!b)return;
+  b.classList.toggle('locked',lockMode);
+  b.setAttribute('aria-pressed',String(lockMode));
+  b.classList.remove('lock-anim');
+  void b.offsetWidth;
+  b.classList.add('lock-anim');
+}
+document.getElementById('lockModeButton')?.addEventListener('click',()=>{
+  lockMode=!lockMode;
+  updateLockButton();
+});
+
+const judgmentHistory=[];
+function addJudgmentHistory(name){
+  if(!name)return;
+  const oldIndex=judgmentHistory.indexOf(name);
+  if(oldIndex!==-1) judgmentHistory.splice(oldIndex,1);
+  judgmentHistory.unshift(name);
+  if(judgmentHistory.length>6)judgmentHistory.length=6;
+  renderJudgmentHistory();
+}
+function renderJudgmentHistory(){
+  const box=document.getElementById('judgmentHistory');
+  if(!box)return;
+  box.innerHTML='';
+  if(!judgmentHistory.length){
+    const empty=document.createElement('span');
+    empty.className='history-empty';
+    empty.textContent='まだ判定履歴はありません';
+    box.appendChild(empty);
+    return;
+  }
+  judgmentHistory.forEach(name=>{
+    const b=document.createElement('button');
+    b.type='button';
+    b.className='history-item';
+    b.textContent=name;
+    b.title='この特技を判定';
+    b.addEventListener('click',()=>startJudgmentFromHistory(name));
+    box.appendChild(b);
+  });
+}
+function startJudgmentFromHistory(name){
+  const cell=[...document.querySelectorAll('.skill-cell')]
+    .find(c=>c.dataset.skillName===name);
+  if(!cell)return;
+  hanteMode=true;
+  mahiMode=false;
+  hanteBtn.classList.add('active');
+  mahiBtn.classList.remove('active');
+  selectHanteStart(cell);
+}
+
+function formatSkillNames(){
+  document.querySelectorAll('.skill-cell').forEach(cell=>{
+    const name=cell.dataset.skillName || cell.textContent.trim();
+    if(!name)return;
+    cell.textContent='';
+    const span=document.createElement('span');
+    const len=[...name].length;
+    span.className='skill-name n'+Math.min(len,6);
+    span.textContent=name;
+    cell.appendChild(span);
+  });
+}
+
+function toFullWidthNumber(value){
+  return String(value).replace(/[0-9]/g, d => String.fromCharCode(d.charCodeAt(0) + 0xfee0));
+}
+
+function calcProb(target){
+  const t = Math.max(2, Math.min(12, Number(target)));
+  let favorable = 0;
+  for(let d1=1; d1<=6; d1++){
+    for(let d2=1; d2<=6; d2++){
+      if(d1+d2 >= t) favorable++;
+    }
+  }
+  return favorable / 36 * 100;
+}
+    
+// navigation
+for(const btn of document.querySelectorAll('.nav-btn')){btn.addEventListener('click',()=>{document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+btn.dataset.page).classList.add('active')})}
+
+// ===== 特技表 =====
+const categories=["器術","体術","忍術","謀術","戦術","妖術"];
+const skillNames=[["絡繰術","騎乗術","生存術","医術","兵糧術","異形化"],["火術","砲術","潜伏術","毒術","鳥獣術","召喚術"],["水術","手裏剣術","遁走術","罠術","野戦術","死霊術"],["針術","手練","盗聴術","調査術","地の利","結界術"],["仕込み","身体操術","腹話術","詐術","意気","封術"],["衣装術","歩法","隠形術","対人術","用兵術","言霊術"],["縄術","走法","変装術","遊芸","記憶術","幻術"],["登術","飛術","香術","九ノ一の術","見敵術","瞳術"],["拷問術","骨法術","分身の術","傀儡の術","暗号術","千里眼の術"],["壊器術","刀術","隠蔽術","流言の術","伝達術","憑依術"],["掘削術","怪力","第六感","経済力","人脈","呪術"]];
+const skillReadings=[["からくりじゅつ","きじょうじゅつ","せいぞんじゅつ","いじゅつ","ひょうろうじゅつ","いぎょうか"],["かじゅつ","ほうじゅつ","せんぷくじゅつ","どくじゅつ","ちょうじゅうじゅつ","しょうかんじゅつ"],["すいじゅつ","しゅりけんじゅつ","とんそうじゅつ","わなじゅつ","やせんじゅつ","しりょうじゅつ"],["しんじゅつ","てだれ","とうちょうじゅつ","ちょうさじゅつ","ちのり","けっかいじゅつ"],["しこみ","しんたいそうじゅつ","ふくわじゅつ","さじゅつ","いき","ふうじゅつ"],["いしょうじゅつ","ほほう","おんぎょうじゅつ","たいじんじゅつ","ようへいじゅつ","ことだまじゅつ"],["じょうじゅつ","そうほう","へんそうじゅつ","ゆうげい","きおくじゅつ","げんじゅつ"],["とじゅつ","ひじゅつ","こうじゅつ","くのいちのじゅつ","けんてきじゅつ","どうじゅつ"],["ごうもんじゅつ","こっぽうじゅつ","ぶんしんのじゅつ","くぐつのじゅつ","あんごうじゅつ","せんりがんのじゅつ"],["かいきじゅつ","とうじゅつ","いんぺいじゅつ","りゅうげんのじゅつ","でんたつじゅつ","ひょういじゅつ"],["くっさくじゅつ","かいりき","だいろっかん","けいざいりょく","じんみゃく","じゅじゅつ"]];
+const rowNumbers=[2,3,4,5,6,7,8,9,10,11,12],gapLetters=["","A","B","C","D","E"];
+const skillTable=document.getElementById('skillTable');
+const thead=document.createElement('thead'),hr=document.createElement('tr');
+for(let c=0;c<6;c++){const gh=document.createElement('th');gh.className='gap-header';gh.dataset.gap=c;const box=document.createElement('div');box.className='gap-checkbox';gh.appendChild(box);if(gapLetters[c]){const letter=document.createElement('span');letter.className='gap-letter';letter.textContent=gapLetters[c];gh.appendChild(letter)}gh.addEventListener('click',()=>toggleGap(c));hr.appendChild(gh);const ch=document.createElement('th');ch.className='cat-header';ch.dataset.cat=c;ch.textContent=categories[c];ch.addEventListener('click',()=>toggleDamage(c));hr.appendChild(ch)}const corner=document.createElement('th');corner.className='num-cell';corner.textContent='';hr.appendChild(corner);thead.appendChild(hr);skillTable.appendChild(thead);
+const tbody=document.createElement('tbody');
+for(let r=0;r<11;r++){const tr=document.createElement('tr');for(let c=0;c<6;c++){const gap=document.createElement('td');gap.className='gap-cell';gap.dataset.gap=c;gap.addEventListener('click',()=>toggleGap(c));tr.appendChild(gap);const cell=document.createElement('td');cell.className='skill-cell';cell.dataset.row=r;cell.dataset.col=c;cell.dataset.skillName=skillNames[r][c];cell.textContent=skillNames[r][c];cell.dataset.reading=skillReadings[r][c];cell.addEventListener('click',()=>handleSkillClick(cell));tr.appendChild(cell)}const n=document.createElement('td');n.className='num-cell';n.textContent=rowNumbers[r];tr.appendChild(n);tbody.appendChild(tr)}skillTable.appendChild(tbody);
+let mahiMode=false,hanteMode=false;
+const mahiBtn=document.getElementById('mahiBtn'),hanteBtn=document.getElementById('hanteBtn'),hanteValue=document.getElementById('hanteValue'),hanteProbability=document.getElementById('hanteProbability');
+mahiBtn.addEventListener('click',()=>{mahiMode=!mahiMode;hanteMode=false;mahiBtn.classList.toggle('active',mahiMode);hanteBtn.classList.remove('active');clearHante()});
+hanteBtn.addEventListener('click',()=>{hanteMode=!hanteMode;mahiMode=false;hanteBtn.classList.toggle('active',hanteMode);mahiBtn.classList.remove('active');clearHante()});
+function handleSkillClick(cell){if(mahiMode){if(!cell.classList.contains('on'))return;cell.classList.toggle('paralyzed');return}if(hanteMode){selectHanteStart(cell);return}toggleSkill(cell)}
+function clearHante(){document.querySelectorAll('.hante-start,.hante-target').forEach(c=>c.classList.remove('hante-start','hante-target'));if(typeof window.clearBaseJudgment==='function')window.clearBaseJudgment();hanteValue.textContent='達成値: --';hanteProbability.textContent='成功率: --'}
+function isUsableSkill(cell){if(cell.classList.contains('paralyzed'))return false;if(!cell.classList.contains('on'))return false;const h=document.querySelector(`.cat-header[data-cat="${cell.dataset.col}"]`);return !h.classList.contains('damaged')}
+function isGapOpen(g){return document.querySelector(`.gap-cell[data-gap="${g}"]`).classList.contains('on')}
+function findNearestUsableSkill(sr,sc){
+  const R=11,C=6;
+  const dist=Array.from({length:R},()=>Array(C).fill(Infinity));
+  dist[sr][sc]=0;
+  // 各特技マスを頂点とする通常の4方向移動。
+  // 縦移動は1マス。横移動も「隣の特技」へ進むので1マスとして数え、
+  // さらに未埋めのギャップならギャップ1マス分を追加する。
+  // 埋まったギャップはギャップそのものを1マスとして数えない。
+  const queue=[[sr,sc]];
+  let head=0;
+  while(head<queue.length){
+    const [r,c]=queue[head++];
+    const d=dist[r][c];
+    const steps=[];
+    if(r>0)steps.push([r-1,c,1]);
+    if(r<R-1)steps.push([r+1,c,1]);
+    if(c>0)steps.push([r,c-1,1+(isGapOpen(c)?0:1)]);
+    if(c<C-1)steps.push([r,c+1,1+(isGapOpen(c+1)?0:1)]);
+    for(const [nr,nc,cost] of steps){
+      const nd=d+cost;
+      if(nd<dist[nr][nc]){
+        dist[nr][nc]=nd;
+        queue.push([nr,nc]);
+      }
+    }
+  }
+  let best=null;
+  for(let r=0;r<R;r++)for(let c=0;c<C;c++){
+    const cell=document.querySelector(`.skill-cell[data-row="${r}"][data-col="${c}"]`);
+    if(isUsableSkill(cell)){
+      const cand={cell,distance:dist[r][c]};
+      if(!best||cand.distance<best.distance)best=cand;
+    }
+  }
+  return best;
+}
+function twoD6Success(target){let hit=0;for(let a=1;a<=6;a++)for(let b=1;b<=6;b++)if(a+b>=target)hit++;return Math.max(0,Math.min(1,hit/36))}
+function selectHanteStart(cell){
+  const wasSelected=cell.classList.contains('hante-start');
+  if(wasSelected){
+    clearHante();
+    return;
+  }
+  clearHante();
+  addJudgmentHistory(cell.dataset.skillName || cell.textContent.trim());
+  cell.classList.add('hante-start');
+
+  const result=findNearestUsableSkill(+cell.dataset.row,+cell.dataset.col);
+  if(!result){
+    hanteValue.textContent='達成値: --';
+    hanteProbability.textContent='成功率: --';
+    return;
+  }
+  result.cell.classList.add('hante-target');
+
+  const base=Math.min(12,result.distance+5);
+  hanteValue.innerHTML=`達成値: <span class="achievement-number achievement-green">${base}</span>（距離 ${result.distance}）`;
+  hanteProbability.textContent=`成功率: ${(twoD6Success(base)*100).toFixed(2)}%`;
+  if(typeof window.setBaseJudgment==='function'){
+    window.setBaseJudgment(base,`（距離 ${result.distance}）`);
+  }
+}
+function toggleSkill(cell){
+if(lockMode)return;cell.classList.toggle('on');if(!cell.classList.contains('on')){cell.classList.remove('hante-start','hante-target')}}
+function toggleGap(c){
+if(lockMode)return;const gapCells=document.querySelectorAll(`.gap-cell[data-gap="${c}"]`),box=document.querySelector(`.gap-header[data-gap="${c}"] .gap-checkbox`),isOn=gapCells[0].classList.contains('on');gapCells.forEach(e=>e.classList.toggle('on',!isOn));box.classList.toggle('on',!isOn)}
+function toggleDamage(c){const header=document.querySelector(`.cat-header[data-cat="${c}"]`),cells=document.querySelectorAll(`.skill-cell[data-col="${c}"]`),damaged=header.classList.contains('damaged');header.classList.toggle('damaged',!damaged);cells.forEach(cell=>cell.classList.toggle('damaged',!damaged))}
+// search
+const searchInput=document.getElementById('skillSearch'),suggestions=document.getElementById('suggestions');
+function norm(s){return s.normalize('NFKC').toLowerCase().replace(/[\s　]/g,'').replace(/[ぁ-ゖ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)+0x60))}
+function allSkillCells(){return [...document.querySelectorAll('.skill-cell')]}
+function applySearch(){const q=norm(searchInput.value.trim());allSkillCells().forEach(c=>c.classList.remove('search-match'));if(!q){suggestions.hidden=true;return []}const matches=allSkillCells().filter(c=>norm(c.textContent).includes(q)||norm(c.dataset.reading).includes(q));matches.forEach(c=>c.classList.add('search-match'));renderSuggestions(matches);return matches}
+function renderSuggestions(matches){suggestions.innerHTML='';if(!matches.length){suggestions.hidden=false;suggestions.innerHTML='<div class="suggestion"><span>該当する特技なし</span></div>';return}matches.slice(0,8).forEach(cell=>{const d=document.createElement('div');d.className='suggestion';d.innerHTML=`<span>${cell.dataset.skillName}</span><small>${cell.dataset.reading}</small>`;d.addEventListener('click',()=>{searchInput.value=cell.textContent;applySearch();cell.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});suggestions.hidden=true;searchInput.focus();searchInput.setSelectionRange(searchInput.value.length,searchInput.value.length)});suggestions.appendChild(d)});suggestions.hidden=false}
+searchInput.addEventListener('input',applySearch);const clearSearch=document.getElementById('clearSearch');clearSearch.addEventListener('click',()=>{searchInput.value='';applySearch();searchInput.focus()});document.getElementById('clearSearch').addEventListener('click',()=>{searchInput.value='';applySearch();searchInput.focus()});document.addEventListener('click',e=>{if(!document.querySelector('.search-area').contains(e.target))suggestions.hidden=true});
+
+// ===== 確率計算機 =====
+const numDiceSel=document.getElementById('numDice'),targetSel=document.getElementById('target'),cmpSel=document.getElementById('cmp'),sentence=document.getElementById('sentence'),pctOut=document.getElementById('pctOut'),fracOut=document.getElementById('fracOut'),diceRow=document.getElementById('diceRow'),barsEl=document.getElementById('bars'),barLabelsEl=document.getElementById('barLabels'),rollBtn=document.getElementById('rollBtn');
+for(let n=2;n<=5;n++){const o=document.createElement('option');o.value=n;o.textContent=`${n}個`;numDiceSel.appendChild(o)}
+function populateTargets(){targetSel.innerHTML='';for(let s=2;s<=12;s++){const o=document.createElement('option');o.value=s;o.textContent=s;targetSel.appendChild(o)}}populateTargets();targetSel.value='5';
+function topTwoDistribution(n){const ways=new Array(13).fill(0),faces=new Array(n).fill(1);function rec(pos){if(pos===n){const sorted=[...faces].sort((a,b)=>b-a);ways[sorted[0]+sorted[1]]++;return}for(let f=1;f<=6;f++){faces[pos]=f;rec(pos+1)}}rec(0);return ways}
+function gcd(a,b){return b===0?a:gcd(b,a%b)}function pickTopTwoIndices(faces){return faces.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v).slice(0,2).map(x=>x.i)}
+function renderDiceFaces(n,faces){const pipMap={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};diceRow.innerHTML='';const selected=pickTopTwoIndices(faces);for(let i=0;i<n;i++){const die=document.createElement('div');die.className='die'+(selected.includes(i)?' selected':'');for(let p=0;p<9;p++){const pip=document.createElement('div');pip.className='pip'+(pipMap[faces[i]].includes(p)?' on':'');die.appendChild(pip)}diceRow.appendChild(die)}}
+function updateSentence(){const n=numDiceSel.value,t=targetSel.value,txt=cmpSel.value==='gte'?'以上':'以下';sentence.textContent=`${n}個のダイスを振ったとき、上位2個の合計が ${t} ${txt} になる確率`}
+function compute(){const n=parseInt(numDiceSel.value),t=parseInt(targetSel.value),cmp=cmpSel.value,ways=topTwoDistribution(n),total=Math.pow(6,n);let favorable=0;for(let s=0;s<ways.length;s++){if((cmp==='gte'&&s>=t)||(cmp==='lte'&&s<=t))favorable+=ways[s]}const pct=favorable/total*100;pctOut.textContent=pct.toFixed(2)+'%';fracOut.textContent=`${favorable} / ${total}`;renderBars(ways,t,cmp)}
+function renderBars(ways,t,cmp){barsEl.innerHTML='';barLabelsEl.innerHTML='';const min=2,max=12,maxWays=Math.max(...ways.slice(min,max+1));for(let s=min;s<=max;s++){const bar=document.createElement('div');bar.className='bar';bar.style.height=Math.max(3,(ways[s]/maxWays)*90)+'px';if((cmp==='gte'&&s>=t)||(cmp==='lte'&&s<=t))bar.classList.add('hit');barsEl.appendChild(bar);const lab=document.createElement('div');lab.textContent=s;barLabelsEl.appendChild(lab)}}
+function rollAndCompute(){const n=parseInt(numDiceSel.value),faces=Array.from({length:n},()=>Math.ceil(Math.random()*6));renderDiceFaces(n,faces);document.querySelectorAll('.die').forEach(d=>d.classList.add('rolling'));setTimeout(()=>document.querySelectorAll('.die').forEach(d=>d.classList.remove('rolling')),500);compute()}
+numDiceSel.addEventListener('change',()=>{renderDiceFaces(parseInt(numDiceSel.value),Array.from({length:parseInt(numDiceSel.value)},()=>1));updateSentence();compute()});targetSel.addEventListener('change',()=>{updateSentence();compute()});cmpSel.addEventListener('change',()=>{updateSentence();compute()});rollBtn.addEventListener('click',rollAndCompute);renderDiceFaces(2,[1,1]);updateSentence();compute();
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',formatSkillNames);else formatSkillNames();renderJudgmentHistory();
+</script>
+
+<script>
+(function(){
+  let mod=0;
+  let baseTarget=null;
+  let baseDistance='';
+
+  function fmt(v){ return v>0 ? '+'+v : String(v); }
+
+  function render(){
+    const valueEl=document.getElementById('hanteValue');
+    const probEl=document.getElementById('hanteProbability');
+    const modEl=document.getElementById('modifierValue');
+    if(modEl) modEl.textContent=fmt(mod);
+    if(!valueEl || !probEl || baseTarget===null) return;
+
+    // 修正後の達成値 = 元の達成値 + 修正値
+    // 表示・成功率ともに同じ修正後の値を使用する。
+    const effective=Math.max(2, Math.min(12, baseTarget + mod));
+    let favorable=0;
+    for(let a=1;a<=6;a++){
+      for(let b=1;b<=6;b++){
+        if(a+b>=effective) favorable++;
+      }
+    }
+    const valueClass = effective >= 10 ? 'achievement-purple' : effective >= 8 ? 'achievement-red' : 'achievement-green';
+    valueEl.innerHTML=`達成値: <span class="achievement-number ${valueClass}">${toFullWidthNumber(effective)}</span>${baseDistance}`;
+    probEl.textContent = `成功率: ${calcProb(effective).toFixed(2)}%`;
+      const prob = calcProb(effective);
+      probEl.classList.remove('prob-green','prob-red','prob-purple');
+      if(prob >= 70) probEl.classList.add('prob-green');
+      else if(prob >= 25) probEl.classList.add('prob-red');
+      else probEl.classList.add('prob-purple');
+  }
+
+  window.setBaseJudgment=function(target,distance){
+    baseTarget=Math.max(2,Math.min(12,Number(target)));
+    baseDistance=distance || '';
+    render();
+  };
+
+  window.clearBaseJudgment=function(){
+    baseTarget=null;
+    baseDistance='';
+    render();
+  };
+
+  document.getElementById('modifierPlus')?.addEventListener('click',()=>{
+    mod++;
+    render();
+  });
+  document.getElementById('modifierMinus')?.addEventListener('click',()=>{
+    mod--;
+    render();
+  });
+
+  render();
+})();
+</script>
+</body></html>
